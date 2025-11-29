@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Mt Everest Elevation</title>
+  <!-- D3 v3 so the (err, rows) callback style works -->
+  <script src="https://d3js.org/d3.v3.min.js"></script>
+  <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+</head>
+<body>
+<div id="myDiv" style="width: 800px; height: 600px;"></div>
+
+<script>
+// Very similar structure to the Mt Bruno example:
+d3.csv("everest_elevations.csv", function(err, rows) {
+  if (err) {
+    console.error(err);
+    return;
+  }
+
+  // 1. Convert strings to numbers
+  rows.forEach(function(d) {
+    d.lat       = +d.lat;        // here: projected Y coordinate
+    d.lon       = +d.lon;        // here: projected X coordinate
+    d.elevation = +d.elevation;  // Z value
+  });
+
+  // 2. Get sorted unique coordinates (grid axes)
+  var uniqueLats = d3.set(rows.map(function(d){ return d.lat; })).values()
+                     .map(Number).sort(d3.ascending);
+  var uniqueLons = d3.set(rows.map(function(d){ return d.lon; })).values()
+                     .map(Number).sort(d3.ascending);
+
+  // (Optional) downsample factor if grid is huge – set to 1 for full resolution
+  var latStep = 1;
+  var lonStep = 1;
+
+  var lats = [];
+  for (var i = 0; i < uniqueLats.length; i += latStep) {
+    lats.push(uniqueLats[i]);
+  }
+
+  var lons = [];
+  for (var j = 0; j < uniqueLons.length; j += lonStep) {
+    lons.push(uniqueLons[j]);
+  }
+
+  // 3. Build lookup: "lat,lon" -> elevation
+  var elevMap = {};
+  rows.forEach(function(d) {
+    var key = d.lat + "," + d.lon;
+    elevMap[key] = d.elevation;
+  });
+
+  // 4. Build z_data matrix like in the Mt Bruno example
+  var z_data = [];
+  for (var i = 0; i < lats.length; i++) {
+    var rowZ = [];
+    for (var j = 0; j < lons.length; j++) {
+      var key = lats[i] + "," + lons[j];
+      var z = elevMap[key];
+      rowZ.push(z !== undefined ? z : null);
+    }
+    z_data.push(rowZ);
+  }
+
+  // 5. Plot surface
+  var data = [{
+    z: z_data,
+    x: lons,          // horizontal axis
+    y: lats,          // vertical axis
+    type: 'surface'
+  }];
+
+  var layout = {
+    title: {
+      text: 'Mt Everest Elevation'
+    },
+    autosize: false,
+    width: 800,
+    height: 600,
+    margin: {
+      l: 65,
+      r: 50,
+      b: 65,
+      t: 90
+    },
+    scene: {
+      xaxis: { title: 'X (meters)' },
+      yaxis: { title: 'Y (meters)' },
+      zaxis: { title: 'Elevation (m)' }
+    }
+  };
+
+  Plotly.newPlot('myDiv', data, layout);
+});
+</script>
+</body>
+</html>
